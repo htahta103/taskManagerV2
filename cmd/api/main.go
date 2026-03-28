@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/htahta103/taskmanagerv2/internal/config"
+	"github.com/htahta103/taskmanagerv2/internal/task"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
@@ -23,6 +26,17 @@ func main() {
 			"version": "v1",
 		})
 	})
+
+	var getter task.Getter
+	if cfg.DatabaseURL != "" {
+		pool, err := pgxpool.New(context.Background(), cfg.DatabaseURL)
+		if err != nil {
+			log.Fatalf("postgres: %v", err)
+		}
+		defer pool.Close()
+		getter = task.NewPostgresStore(pool)
+	}
+	mux.HandleFunc("GET /functions/v1/tasks/{id}", task.HandleGetOne(getter))
 
 	addr := ":" + strconv.Itoa(cfg.Port)
 	log.Printf("listening on %s (env=%s)", addr, cfg.Environment)
