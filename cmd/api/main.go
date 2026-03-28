@@ -7,11 +7,17 @@ import (
 	"strconv"
 
 	"github.com/htahta103/taskmanagerv2/internal/config"
+	"github.com/htahta103/taskmanagerv2/internal/task"
 )
 
 func main() {
 	cfg := config.Load()
 	mux := http.NewServeMux()
+
+	store := task.NewMemoryStore()
+	taskHandler := &task.Handler{Store: store}
+	mux.HandleFunc("POST /functions/v1/tasks", taskHandler.Create)
+
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
