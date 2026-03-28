@@ -7,10 +7,14 @@ import (
 	"strconv"
 
 	"github.com/htahta103/taskmanagerv2/internal/config"
+	"github.com/htahta103/taskmanagerv2/internal/tasks"
 )
 
 func main() {
 	cfg := config.Load()
+	store := tasks.NewMemoryStore()
+	th := tasks.NewHandler(store)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -23,6 +27,8 @@ func main() {
 			"version": "v1",
 		})
 	})
+	mux.HandleFunc("PATCH /api/v1/tasks/{id}", th.Patch)
+	mux.HandleFunc("PATCH /functions/v1/tasks/{id}", th.Patch)
 
 	addr := ":" + strconv.Itoa(cfg.Port)
 	log.Printf("listening on %s (env=%s)", addr, cfg.Environment)
