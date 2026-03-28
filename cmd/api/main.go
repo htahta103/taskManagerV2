@@ -24,6 +24,7 @@ func main() {
 			"version": "v1",
 		})
 	})
+	mux.HandleFunc("DELETE /functions/v1/tasks/clear/done", httpapi.HandleClearDone(taskStore))
 	mux.HandleFunc("DELETE /functions/v1/tasks/{id}", httpapi.HandleTaskDelete(taskStore))
 
 	addr := ":" + strconv.Itoa(cfg.Port)
