@@ -1,5 +1,8 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { TaskEditDialog } from "./TaskEditDialog";
+import { TaskQuickAdd } from "./TaskQuickAdd";
+import { useTasks } from "../tasks/TaskContext";
 
 const nav: { to: string; label: string; end?: boolean }[] = [
   { to: "/", label: "Inbox", end: true },
@@ -10,6 +13,7 @@ const nav: { to: string; label: string; end?: boolean }[] = [
 
 export function AppShell() {
   const { user, logout } = useAuth();
+  const { editing, closeEditor } = useTasks();
   const navigate = useNavigate();
 
   return (
@@ -53,9 +57,13 @@ export function AppShell() {
           </nav>
         </aside>
         <main className="shell__main">
+          <div className="shell__toolbar">
+            <TaskQuickAdd />
+          </div>
           <Outlet />
         </main>
       </div>
+      {editing ? <TaskEditDialog key={editing.id} task={editing} onClose={closeEditor} /> : null}
     </div>
   );
 }

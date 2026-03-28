@@ -9,6 +9,7 @@ import { ProjectsPage } from "./pages/ProjectsPage";
 import { SearchPage } from "./pages/SearchPage";
 import { SignupPage } from "./pages/SignupPage";
 import { TodayPage } from "./pages/TodayPage";
+import { TaskProvider } from "./tasks/TaskContext";
 
 export default function App() {
   return (
@@ -18,7 +19,14 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<AppShell />}>
+            <Route
+              path="/"
+              element={
+                <TaskProvider>
+                  <AppShell />
+                </TaskProvider>
+              }
+            >
               <Route index element={<InboxPage />} />
               <Route path="today" element={<TodayPage />} />
               <Route path="projects" element={<ProjectsPage />} />
