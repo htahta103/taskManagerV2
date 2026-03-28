@@ -31,7 +31,15 @@ export function parseTaskListQuery(url: URL): ParseResult {
   if (status) value.status = status;
   if (priority) value.priority = priority;
   const trimmed = searchRaw?.trim();
-  if (trimmed) value.search = trimmed;
+  if (trimmed) {
+    if (trimmed.includes(",")) {
+      return {
+        ok: false,
+        error: "search must not contain commas (reserved for filter syntax)",
+      };
+    }
+    value.search = trimmed;
+  }
 
   return { ok: true, value };
 }

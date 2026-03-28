@@ -1,0 +1,8 @@
+# Linked Gas Town project (Supabase). Deploy: supabase db push / supabase functions deploy
+project_id = "nfbquxfnsprwjsehhnvq"
+
+[functions.tasks]
+verify_jwt = false
+
+[functions.health]
+verify_jwt = false

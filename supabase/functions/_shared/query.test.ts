@@ -31,3 +31,9 @@ Deno.test("parseTaskListQuery trims search", () => {
 Deno.test("escapeILikeLiteral escapes wildcards", () => {
   assertEquals(escapeILikeLiteral("100%_done"), "100\\%\\_done");
 });
+
+Deno.test("parseTaskListQuery rejects search with comma", () => {
+  const u = new URL("https://x/tasks?search=a,b");
+  const r = parseTaskListQuery(u);
+  assertEquals(r.ok, false);
+});
