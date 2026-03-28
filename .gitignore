@@ -18,4 +18,5 @@ coverage.out
 
 # Node / Vite
 node_modules/
+web/node_modules/
 web/dist/

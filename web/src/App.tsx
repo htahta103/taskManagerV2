@@ -1,14 +1,33 @@
-const apiBase =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "http://localhost:8080";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { AuthProvider } from "./auth/AuthContext";
+import { AppShell } from "./components/AppShell";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { InboxPage } from "./pages/InboxPage";
+import { LoginPage } from "./pages/LoginPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
+import { ProjectsPage } from "./pages/ProjectsPage";
+import { SearchPage } from "./pages/SearchPage";
+import { SignupPage } from "./pages/SignupPage";
+import { TodayPage } from "./pages/TodayPage";
 
 export default function App() {
   return (
-    <main className="app">
-      <h1>Task Manager V2</h1>
-      <p className="muted">
-        API base: <code>{apiBase}</code>
-      </p>
-      <p>Scaffold ready — wire routes and data next.</p>
-    </main>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<AppShell />}>
+              <Route index element={<InboxPage />} />
+              <Route path="today" element={<TodayPage />} />
+              <Route path="projects" element={<ProjectsPage />} />
+              <Route path="search" element={<SearchPage />} />
+            </Route>
+          </Route>
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }

@@ -44,7 +44,11 @@
    cd web && npm install && npm run dev
    ```
 
-   Set `VITE_API_BASE_URL` in `web/.env.local` if the API is not on `http://localhost:8080`.
+   Vite proxies `/api` to `http://127.0.0.1:8080`. Set `VITE_API_BASE_URL` in `web/.env.local` only if the API is on another origin (leave unset for the proxy).
+
+   Optional UI-only auth (no backend): `VITE_MOCK_AUTH=true npm run dev`.
+
+The SPA includes sign-in / sign-up, session restore via `GET /api/v1/me`, and the primary shell routes from the PRD (Inbox, Today, Projects, Search). Auth responses follow `docs/api/openapi.yaml`: `access_token` (or legacy `token`) plus `user`; the client stores the access token and sends `Authorization: Bearer …` while still using `credentials: "include"` for cookie-based sessions.
 
 ## CI
 
