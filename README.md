@@ -59,3 +59,13 @@ GitHub Actions runs `go test`, `go vet`, API build, and `web` typecheck + produc
 - `make api-run` / `make api-test` — run API or Go checks
 - `make web-build` — install deps and build the frontend
 - `make ci` — same checks as CI (Go + web build)
+
+## Database migrations
+
+SQL lives in `db/migrations/`. Apply in order with `psql` (set `DATABASE_URL` to your cluster, e.g. Fly Postgres for app `nfbquxfnsprwjsehhnvq`):
+
+```bash
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/001_tasks_schema.sql
+```
+
+Alternatively run `fly postgres connect -a nfbquxfnsprwjsehhnvq` and paste the migration file contents.
