@@ -1,8 +1,6 @@
 import type { User } from "./types";
 import { readStoredToken, writeStoredToken } from "./token";
 
-const API_PREFIX = "/api/v1";
-
 export class ApiError extends Error {
   readonly status: number;
   readonly body: unknown;
@@ -18,9 +16,17 @@ export class ApiError extends Error {
 function apiBase(): string {
   const fromBase = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "");
   if (fromBase) return fromBase;
-  // Cloudflare Pages / docs often use VITE_API_URL (same semantics: origin only, no /api/v1).
   const fromUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
   return fromUrl ?? "";
+}
+
+/** OpenAPI app lives under /api/v1; Supabase Edge base URL is .../functions/v1 (no extra prefix). */
+function apiPrefix(): string {
+  const base = apiBase();
+  if (base.endsWith("/functions/v1")) {
+    return "";
+  }
+  return "/api/v1";
 }
 
 function mockAuthEnabled(): boolean {
@@ -55,7 +61,7 @@ export async function apiFetch(
   path: string,
   init: RequestInit & { json?: unknown } = {},
 ): Promise<Response> {
-  const url = `${apiBase()}${API_PREFIX}${path}`;
+  const url = `${apiBase()}${apiPrefix()}${path}`;
   const headers = new Headers(init.headers);
   if (!headers.has("Content-Type") && init.json !== undefined) {
     headers.set("Content-Type", "application/json");
