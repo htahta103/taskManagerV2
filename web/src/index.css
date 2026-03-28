@@ -1,28 +1,6 @@
-:root {
-  font-family: system-ui, sans-serif;
-  line-height: 1.5;
-  color: #0f172a;
-  background: #f8fafc;
-}
+@import "tailwindcss";
 
 body {
   margin: 0;
   min-height: 100vh;
-}
-
-.app {
-  max-width: 40rem;
-  margin: 0 auto;
-  padding: 2rem 1rem;
-}
-
-.muted {
-  color: #64748b;
-}
-
-code {
-  font-size: 0.9em;
-  background: #e2e8f0;
-  padding: 0.15em 0.35em;
-  border-radius: 4px;
 }
