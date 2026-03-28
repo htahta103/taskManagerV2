@@ -1,13 +1,30 @@
+import { TaskList } from "../components/TaskList";
+import { useTasks } from "../tasks/TaskContext";
+
 export function InboxPage() {
+  const { tasks, loading, openEditor } = useTasks();
+  const open = tasks.filter((t) => t.status !== "done").sort(byUpdatedDesc);
+
   return (
     <div className="page">
       <header className="page__header">
         <h1>Inbox</h1>
-        <p className="muted">All open tasks will land here.</p>
+        <p className="muted">Everything that still needs attention.</p>
       </header>
-      <section className="empty">
-        <p>No tasks yet — task list UI ships in the next milestone.</p>
-      </section>
+      {loading ? (
+        <p className="muted">Loading tasks…</p>
+      ) : (
+        <TaskList
+          tasks={open}
+          empty="No open tasks — add one above."
+          onOpen={openEditor}
+          showBucketHint
+        />
+      )}
     </div>
   );
+}
+
+function byUpdatedDesc(a: { updatedAt: string }, b: { updatedAt: string }): number {
+  return b.updatedAt.localeCompare(a.updatedAt);
 }
