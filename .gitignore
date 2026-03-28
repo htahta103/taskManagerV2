@@ -27,3 +27,9 @@ web/test-results/
 web/playwright-report/
 web/blob-report/
 cli/dist/
+
+# Supabase CLI (linked project metadata; may contain connection hints)
+supabase/.temp/
+
+# Wrangler local state
+.wrangler/

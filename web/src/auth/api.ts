@@ -16,7 +16,11 @@ export class ApiError extends Error {
 }
 
 function apiBase(): string {
-  return import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ?? "";
+  const fromBase = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "");
+  if (fromBase) return fromBase;
+  // Cloudflare Pages / docs often use VITE_API_URL (same semantics: origin only, no /api/v1).
+  const fromUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
+  return fromUrl ?? "";
 }
 
 function mockAuthEnabled(): boolean {
