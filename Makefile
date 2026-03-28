@@ -1,4 +1,4 @@
-.PHONY: api-run api-test web-install web-dev web-build web-e2e ci ci-full
+.PHONY: api-run api-test web-install web-dev web-build web-e2e cli-ci ci ci-full
 
 api-run:
 	go run ./cmd/api
@@ -19,6 +19,9 @@ web-build:
 web-e2e:
 	cd web && npm ci && npm run build && npx playwright install chromium && npm run test:e2e
 
-ci: api-test web-build
+cli-ci:
+	cd cli && npm ci && npm run typecheck && npm run build
 
-ci-full: api-test web-build web-e2e
+ci: api-test cli-ci web-build
+
+ci-full: api-test cli-ci web-build web-e2e

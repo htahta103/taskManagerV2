@@ -10,6 +10,7 @@
 |------|---------|
 | `cmd/api` | HTTP API entrypoint (`/healthz`, `/api/v1` stub) |
 | `internal/config` | Environment-based configuration |
+| `cli/` | Node.js CLI (`task` binary) for `/api/v1` tasks |
 | `web/` | Vite + React + TypeScript frontend |
 | `docker-compose.yml` | Local PostgreSQL 17 |
 | `.env.example` | Copy to `.env` and adjust for local dev |
@@ -17,7 +18,7 @@
 ## Prerequisites
 
 - Go 1.23+
-- Node.js 22+ (for `web/`)
+- Node.js 22+ (for `web/` and `cli/`)
 - Docker (optional, for Postgres)
 
 ## Local development
@@ -38,7 +39,23 @@
    - Health: `GET http://localhost:8080/healthz`
    - API stub: `GET http://localhost:8080/api/v1`
 
-3. **Web:**
+3. **CLI:**
+
+   ```bash
+   cd cli && npm install && npm run build
+   ```
+
+   Point at your API (Supabase Edge Function base URL or local API):
+
+   ```bash
+   export TASKMANAGER_API_URL=http://localhost:8080/api/v1
+   export TASKMANAGER_TOKEN=   # optional Bearer JWT
+   node dist/cli.js list
+   ```
+
+   Or install the `task` shim: `cd cli && npm link` (after `npm run build`).
+
+4. **Web:**
 
    ```bash
    cd web && npm install && npm run dev
@@ -52,13 +69,15 @@ The SPA includes sign-in / sign-up, session restore via `GET /api/v1/me`, and th
 
 ## CI
 
-GitHub Actions runs `go test`, `go vet`, API build, and `web` typecheck + production build on pushes and PRs to `main`.
+GitHub Actions runs `go test`, `go vet`, API build, `web` typecheck + build, CLI typecheck + build, and Playwright e2e on pushes and PRs to `main`.
 
 ## Makefile
 
 - `make api-run` / `make api-test` — run API or Go checks
+- `make cli-ci` — install, typecheck, and build the CLI
 - `make web-build` — install deps and build the frontend
-- `make ci` — same checks as CI (Go + web build)
+- `make ci` — same checks as default CI (Go + CLI + web build)
+- `make ci-full` — adds e2e (Playwright) on top of `ci`
 
 ## Database migrations
 
