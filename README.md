@@ -51,6 +51,9 @@
    export TASKMANAGER_API_URL=http://localhost:8080/api/v1
    export TASKMANAGER_TOKEN=   # optional Bearer JWT
    node dist/cli.js list
+   node dist/cli.js search -q "keyword"
+   node dist/cli.js add "Title" --due-date 2026-04-01 --focus-bucket today
+   node dist/cli.js edit <task-uuid> --status todo --focus-bucket next
    ```
 
    Or install the `task` shim: `cd cli && npm link` (after `npm run build`).

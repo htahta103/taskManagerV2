@@ -1,5 +1,10 @@
 #!/usr/bin/env node
-import { ApiClient, ApiError, type TaskStatus } from "./client.js";
+import {
+  ApiClient,
+  ApiError,
+  type FocusBucket,
+  type TaskStatus,
+} from "./client.js";
 import { formatTaskDetail, formatTaskList } from "./format.js";
 
 const UUID_RE =
@@ -24,7 +29,9 @@ Environment:
 Commands:
   task add [options] <title...>     Create a task; prints new task UUID
   task list [options]               List tasks (formatted table)
+  task search [options]             List tasks (GET /search; requires -q)
   task get <task-id>                Show one task
+  task edit <task-id> [options]     Update fields (PATCH)
   task done <task-id>               Mark task done
   task progress <task-id>           Set status to doing (in progress)
   task delete <task-id>             Delete a task
@@ -37,11 +44,32 @@ List options:
   --limit <n>                       Page size when fetching (default 50)
   -q, --query <text>                Search substring (title)
 
+Search options:
+  -q, --query <text>                Required search string
+  --limit <n>                       Page size (default 50)
+
 Add options:
   -d, --description <text>
   --status todo|doing|done
   --priority low|medium|high
+  --due-date <YYYY-MM-DD>
+  --focus-bucket none|today|next|later
   --project-id <uuid>
+
+Edit options (at least one required):
+  --title <text>
+  -d, --description <text>
+  --clear-description
+  --status todo|doing|done
+  --priority low|medium|high
+  --clear-priority
+  --due-date <YYYY-MM-DD>
+  --clear-due-date
+  --focus-bucket none|today|next|later
+  --project-id <uuid>
+  --clear-project
+  --assignee-id <uuid>
+  --clear-assignee
 `);
 }
 
@@ -76,7 +104,16 @@ function parseArgs(argv: string[]): { _: string[]; flags: ArgMap } {
         continue;
       }
       const next = argv[i + 1];
-      const booleanOnly = ["force", "help", "done-only"].includes(raw);
+      const booleanOnly = [
+        "force",
+        "help",
+        "done-only",
+        "clear-description",
+        "clear-priority",
+        "clear-due-date",
+        "clear-project",
+        "clear-assignee",
+      ].includes(raw);
       if (!booleanOnly && next && !next.startsWith("-")) {
         flags[raw] = next;
         i++;
@@ -132,11 +169,43 @@ async function cmdAdd(c: ApiClient, args: string[], flags: ArgMap): Promise<void
     requireUuid("project id", pid);
     body.project_id = pid;
   }
+  const due = flags["due-date"];
+  if (typeof due === "string") body.due_date = due;
+  const fb = flags["focus-bucket"];
+  if (typeof fb === "string") {
+    if (!["none", "today", "next", "later"].includes(fb))
+      die(`task add: invalid --focus-bucket ${JSON.stringify(fb)}`);
+    body.focus_bucket = fb as FocusBucket;
+  }
   try {
     const task = await c.createTask(body);
     console.log(task.id);
   } catch (e) {
     if (e instanceof ApiError) die(`task add: ${e.message}`, e.status || 1);
+    throw e;
+  }
+}
+
+async function cmdSearch(c: ApiClient, flags: ArgMap): Promise<void> {
+  const raw = flags.q ?? flags.query;
+  const q = typeof raw === "string" ? raw.trim() : "";
+  if (!q) die("task search: missing -q/--query");
+  const lim = flags.limit;
+  const params: Parameters<ApiClient["searchTasks"]>[0] = { q };
+  if (typeof lim === "string") {
+    const n = Number(lim);
+    if (!Number.isFinite(n) || n < 1 || n > 100)
+      die("task search: --limit must be 1–100");
+    params.limit = n;
+  }
+  try {
+    const page = await c.searchTasks(params);
+    console.log(formatTaskList(page.items));
+    if (page.next_cursor) {
+      console.error("(more results available; pagination not shown — narrow query)");
+    }
+  } catch (e) {
+    if (e instanceof ApiError) die(`task search: ${e.message}`, e.status || 1);
     throw e;
   }
 }
@@ -177,6 +246,88 @@ async function cmdList(c: ApiClient, flags: ArgMap): Promise<void> {
     }
   } catch (e) {
     if (e instanceof ApiError) die(`task list: ${e.message}`, e.status || 1);
+    throw e;
+  }
+}
+
+async function cmdEdit(c: ApiClient, id: string, flags: ArgMap): Promise<void> {
+  requireUuid("task id", id);
+  const patch: Record<string, unknown> = {};
+  const title = flags.title;
+  if (typeof title === "string") {
+    if (!title.trim()) die("task edit: --title must be non-empty");
+    patch.title = title;
+  }
+  const desc = flags.description;
+  const clearDesc = Boolean(flags["clear-description"]);
+  if (clearDesc && typeof desc === "string")
+    die("task edit: use either --description or --clear-description, not both");
+  if (typeof desc === "string") patch.description = desc;
+  if (clearDesc) patch.description = null;
+
+  const st = flags.status;
+  if (typeof st === "string") {
+    if (!["todo", "doing", "done"].includes(st))
+      die(`task edit: invalid --status ${JSON.stringify(st)}`);
+    patch.status = st;
+  }
+
+  const pr = flags.priority;
+  const clearPr = Boolean(flags["clear-priority"]);
+  if (clearPr && typeof pr === "string")
+    die("task edit: use either --priority or --clear-priority, not both");
+  if (typeof pr === "string") {
+    if (!["low", "medium", "high"].includes(pr))
+      die(`task edit: invalid --priority ${JSON.stringify(pr)}`);
+    patch.priority = pr;
+  }
+  if (clearPr) patch.priority = null;
+
+  const due = flags["due-date"];
+  const clearDue = Boolean(flags["clear-due-date"]);
+  if (clearDue && typeof due === "string")
+    die("task edit: use either --due-date or --clear-due-date, not both");
+  if (typeof due === "string") patch.due_date = due;
+  if (clearDue) patch.due_date = null;
+
+  const foc = flags["focus-bucket"];
+  if (typeof foc === "string") {
+    if (!["none", "today", "next", "later"].includes(foc))
+      die(`task edit: invalid --focus-bucket ${JSON.stringify(foc)}`);
+    patch.focus_bucket = foc;
+  }
+
+  const pid = flags["project-id"];
+  const clearProj = Boolean(flags["clear-project"]);
+  if (clearProj && typeof pid === "string")
+    die("task edit: use either --project-id or --clear-project, not both");
+  if (typeof pid === "string") {
+    requireUuid("project id", pid);
+    patch.project_id = pid;
+  }
+  if (clearProj) patch.project_id = null;
+
+  const aid = flags["assignee-id"];
+  const clearAid = Boolean(flags["clear-assignee"]);
+  if (clearAid && typeof aid === "string")
+    die("task edit: use either --assignee-id or --clear-assignee, not both");
+  if (typeof aid === "string") {
+    requireUuid("assignee id", aid);
+    patch.assignee_id = aid;
+  }
+  if (clearAid) patch.assignee_id = null;
+
+  if (Object.keys(patch).length === 0) {
+    die("task edit: pass at least one field to change (see --help)");
+  }
+  try {
+    const t = await c.patchTask(id, patch);
+    console.log(formatTaskDetail(t));
+  } catch (e) {
+    if (e instanceof ApiError) {
+      if (e.status === 404) die(`task edit: task not found (${id})`, 1);
+      die(`task edit: ${e.message}`, e.status || 1);
+    }
     throw e;
   }
 }
@@ -284,9 +435,16 @@ async function main(): Promise<void> {
     case "list":
       await cmdList(c, flags);
       break;
+    case "search":
+      await cmdSearch(c, flags);
+      break;
     case "get":
       if (_.length < 1) die("task get: missing <task-id>");
       await cmdGet(c, _[0]);
+      break;
+    case "edit":
+      if (_.length < 1) die("task edit: missing <task-id>");
+      await cmdEdit(c, _[0], flags);
       break;
     case "done":
       if (_.length < 1) die("task done: missing <task-id>");

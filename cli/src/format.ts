@@ -5,20 +5,26 @@ function pad(s: string, w: number): string {
   return t.padEnd(w);
 }
 
+function formatTagNames(t: Task): string {
+  const names = t.tags?.map((x) => x.name) ?? [];
+  return names.join(", ");
+}
+
 /** Fixed-width table for terminal readability. */
 export function formatTaskList(tasks: Task[]): string {
   if (tasks.length === 0) {
     return "(no tasks)";
   }
   const idW = 36;
-  const titleW = 40;
+  const titleW = 32;
   const statusW = 8;
   const bucketW = 8;
-  const header = `${pad("ID", idW)} ${pad("TITLE", titleW)} ${pad("STATUS", statusW)} ${pad("BUCKET", bucketW)}`;
+  const tagsW = 18;
+  const header = `${pad("ID", idW)} ${pad("TITLE", titleW)} ${pad("STATUS", statusW)} ${pad("BUCKET", bucketW)} ${pad("TAGS", tagsW)}`;
   const rule = "-".repeat(header.length);
   const lines = tasks.map(
     (t) =>
-      `${pad(t.id, idW)} ${pad(t.title, titleW)} ${pad(t.status, statusW)} ${pad(t.focus_bucket, bucketW)}`,
+      `${pad(t.id, idW)} ${pad(t.title, titleW)} ${pad(t.status, statusW)} ${pad(t.focus_bucket, bucketW)} ${pad(formatTagNames(t), tagsW)}`,
   );
   return [header, rule, ...lines].join("\n");
 }
@@ -36,5 +42,9 @@ export function formatTaskDetail(t: Task): string {
   if (t.priority) lines.splice(3, 0, `priority:     ${t.priority}`);
   if (t.due_date) lines.splice(3, 0, `due_date:     ${t.due_date}`);
   if (t.project_id) lines.push(`project_id:   ${t.project_id}`);
+  if (t.assignee_id) lines.push(`assignee_id:  ${t.assignee_id}`);
+  if (t.tags?.length) {
+    lines.push(`tags:         ${t.tags.map((x) => x.name).join(", ")}`);
+  }
   return lines.join("\n");
 }

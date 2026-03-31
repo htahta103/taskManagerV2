@@ -1,6 +1,12 @@
 export type TaskStatus = "todo" | "doing" | "done";
 export type FocusBucket = "none" | "today" | "next" | "later";
 
+export interface Tag {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -11,6 +17,7 @@ export interface Task {
   focus_bucket: FocusBucket;
   project_id?: string | null;
   assignee_id?: string | null;
+  tags?: Tag[];
   created_at: string;
   updated_at: string;
 }
@@ -156,6 +163,19 @@ export class ApiClient {
     return this.request<TaskListPage>("GET", path);
   }
 
+  /** GET /search — `q` is required by the API. */
+  searchTasks(params: {
+    q: string;
+    limit?: number;
+    cursor?: string;
+  }): Promise<TaskListPage> {
+    const q = new URLSearchParams();
+    q.set("q", params.q);
+    if (params.limit != null) q.set("limit", String(params.limit));
+    if (params.cursor) q.set("cursor", params.cursor);
+    return this.request<TaskListPage>("GET", `search?${q.toString()}`);
+  }
+
   async listAllTasks(
     filter: Omit<
       Parameters<ApiClient["listTasks"]>[0],
@@ -182,7 +202,7 @@ export class ApiClient {
     return this.request<Task>("GET", `tasks/${encodeURIComponent(id)}`);
   }
 
-  patchTask(id: string, patch: TaskPatchBody): Promise<Task> {
+  patchTask(id: string, patch: Record<string, unknown>): Promise<Task> {
     return this.request<Task>(
       "PATCH",
       `tasks/${encodeURIComponent(id)}`,
