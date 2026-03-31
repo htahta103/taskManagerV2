@@ -54,12 +54,25 @@ func (s *server) issueAuthResponse(w http.ResponseWriter, r *http.Request, statu
 func (s *server) postRegister(w http.ResponseWriter, r *http.Request) {
 	var body registerBody
 	if err := readJSON(r, &body); err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "invalid JSON body", "validation")
+		writeValidation(w, "invalid JSON body", map[string]string{"body": "malformed JSON or unknown fields"})
 		return
 	}
 	email := strings.TrimSpace(strings.ToLower(body.Email))
-	if email == "" || len(body.Password) < 8 || strings.TrimSpace(body.Name) == "" || len(body.Name) > 120 {
-		writeError(w, http.StatusUnprocessableEntity, "email, password (min 8), and name (max 120) are required", "validation")
+	nameTrim := strings.TrimSpace(body.Name)
+	fields := map[string]string{}
+	if email == "" {
+		fields["email"] = "required"
+	}
+	if len(body.Password) < 8 {
+		fields["password"] = "must be at least 8 characters"
+	}
+	if nameTrim == "" {
+		fields["name"] = "required"
+	} else if len(nameTrim) > 120 {
+		fields["name"] = "must be at most 120 characters"
+	}
+	if len(fields) > 0 {
+		writeValidation(w, "validation failed", fields)
 		return
 	}
 	hash, err := auth.HashPassword(body.Password)
@@ -67,7 +80,7 @@ func (s *server) postRegister(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "could not hash password", "internal")
 		return
 	}
-	u, err := s.store.CreateUser(r.Context(), email, hash, body.Name)
+	u, err := s.store.CreateUser(r.Context(), email, hash, nameTrim)
 	if err != nil {
 		if errors.Is(err, store.ErrDuplicate) {
 			writeError(w, http.StatusConflict, "email already registered", "duplicate")
@@ -82,12 +95,19 @@ func (s *server) postRegister(w http.ResponseWriter, r *http.Request) {
 func (s *server) postLogin(w http.ResponseWriter, r *http.Request) {
 	var body loginBody
 	if err := readJSON(r, &body); err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "invalid JSON body", "validation")
+		writeValidation(w, "invalid JSON body", map[string]string{"body": "malformed JSON or unknown fields"})
 		return
 	}
 	email := strings.TrimSpace(strings.ToLower(body.Email))
-	if email == "" || body.Password == "" {
-		writeError(w, http.StatusUnprocessableEntity, "email and password required", "validation")
+	fields := map[string]string{}
+	if email == "" {
+		fields["email"] = "required"
+	}
+	if body.Password == "" {
+		fields["password"] = "required"
+	}
+	if len(fields) > 0 {
+		writeValidation(w, "validation failed", fields)
 		return
 	}
 	row, err := s.store.GetUserByEmail(r.Context(), email)
@@ -122,12 +142,12 @@ func (s *server) postLogout(w http.ResponseWriter, r *http.Request) {
 func (s *server) postRefresh(w http.ResponseWriter, r *http.Request) {
 	var body refreshBody
 	if err := readJSON(r, &body); err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "invalid JSON body", "validation")
+		writeValidation(w, "invalid JSON body", map[string]string{"body": "malformed JSON or unknown fields"})
 		return
 	}
 	raw := strings.TrimSpace(body.RefreshToken)
 	if raw == "" {
-		writeError(w, http.StatusUnprocessableEntity, "refresh_token required", "validation")
+		writeValidation(w, "validation failed", map[string]string{"refresh_token": "required"})
 		return
 	}
 	ctx := r.Context()

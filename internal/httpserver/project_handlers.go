@@ -3,6 +3,7 @@ package httpserver
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/htahta103/taskmanagerv2/internal/store"
@@ -44,13 +45,22 @@ func (s *server) createProject(w http.ResponseWriter, r *http.Request) {
 	}
 	var body projectCreateBody
 	if err := readJSON(r, &body); err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "invalid JSON body", "validation")
+		writeValidation(w, "invalid JSON body", map[string]string{"body": "malformed JSON or unknown fields"})
 		return
 	}
-	p, err := s.store.CreateProject(r.Context(), uid, body.Name)
+	name := strings.TrimSpace(body.Name)
+	if name == "" {
+		writeValidation(w, "validation failed", map[string]string{"name": "required"})
+		return
+	}
+	if len(name) > 200 {
+		writeValidation(w, "validation failed", map[string]string{"name": "must be at most 200 characters"})
+		return
+	}
+	p, err := s.store.CreateProject(r.Context(), uid, name)
 	if err != nil {
 		if errors.Is(err, store.ErrInvalidInput) {
-			writeError(w, http.StatusUnprocessableEntity, "invalid project name", "validation")
+			writeValidation(w, "invalid project name", map[string]string{"name": "failed validation"})
 			return
 		}
 		writeError(w, http.StatusInternalServerError, "could not create project", "internal")
@@ -67,7 +77,7 @@ func (s *server) getProject(w http.ResponseWriter, r *http.Request) {
 	}
 	pid, err := uuid.Parse(r.PathValue("projectId"))
 	if err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "invalid project id", "validation")
+		writeValidation(w, "invalid path", map[string]string{"projectId": "must be a UUID"})
 		return
 	}
 	p, err := s.store.GetProject(r.Context(), uid, pid)
@@ -90,19 +100,32 @@ func (s *server) patchProject(w http.ResponseWriter, r *http.Request) {
 	}
 	pid, err := uuid.Parse(r.PathValue("projectId"))
 	if err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "invalid project id", "validation")
+		writeValidation(w, "invalid path", map[string]string{"projectId": "must be a UUID"})
 		return
 	}
 	var body projectPatchBody
 	if err := readJSON(r, &body); err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "invalid JSON body", "validation")
+		writeValidation(w, "invalid JSON body", map[string]string{"body": "malformed JSON or unknown fields"})
 		return
 	}
 	if body.Name == nil && body.Archived == nil {
-		writeError(w, http.StatusUnprocessableEntity, "no fields to update", "validation")
+		writeValidation(w, "no fields to update", map[string]string{"body": "at least one of name or archived is required"})
 		return
 	}
-	p, err := s.store.UpdateProject(r.Context(), uid, pid, body.Name, body.Archived)
+	var namePtr *string
+	if body.Name != nil {
+		v := strings.TrimSpace(*body.Name)
+		if v == "" {
+			writeValidation(w, "validation failed", map[string]string{"name": "cannot be empty"})
+			return
+		}
+		if len(v) > 200 {
+			writeValidation(w, "validation failed", map[string]string{"name": "must be at most 200 characters"})
+			return
+		}
+		namePtr = &v
+	}
+	p, err := s.store.UpdateProject(r.Context(), uid, pid, namePtr, body.Archived)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "project not found", "not_found")
@@ -122,7 +145,7 @@ func (s *server) deleteProject(w http.ResponseWriter, r *http.Request) {
 	}
 	pid, err := uuid.Parse(r.PathValue("projectId"))
 	if err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "invalid project id", "validation")
+		writeValidation(w, "invalid path", map[string]string{"projectId": "must be a UUID"})
 		return
 	}
 	if err := s.store.DeleteProject(r.Context(), uid, pid); err != nil {

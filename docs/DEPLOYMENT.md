@@ -13,6 +13,7 @@ This rig ships a single Go HTTP process (`cmd/api`), PostgreSQL as the system of
 | `JWT_ACCESS_TTL_MINUTES` | No | Access token lifetime (default 15). |
 | `JWT_REFRESH_TTL_DAYS` | No | Refresh token lifetime (default 30). |
 | `CORS_ORIGIN` | Recommended in prod | Exact browser `Origin` allowed for credentialed requests (e.g. `https://app.example.com`). Must match your **HTTPS** SPA origin. |
+| `AUTH_RATE_LIMIT_PER_MINUTE` | No | Per-IP cap on `POST /api/v1/auth/register`, `/login`, and `/refresh`. If unset: no limit in `development`; with `APP_ENV=production`, defaults to **60**. Set `0` to disable in production. |
 
 Copy [`.env.example`](../.env.example) for local values; **never** commit real secrets.
 

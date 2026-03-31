@@ -3,7 +3,7 @@ package httpserver
 import (
 	"errors"
 	"net/http"
-	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/htahta103/taskmanagerv2/internal/store"
@@ -25,19 +25,19 @@ func (s *server) postTaskTags(w http.ResponseWriter, r *http.Request) {
 	}
 	tid, err := uuid.Parse(r.PathValue("taskId"))
 	if err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "invalid task id", "validation")
+		writeValidation(w, "invalid path", map[string]string{"taskId": "must be a UUID"})
 		return
 	}
 	var body taskTagsBody
 	if err := readJSON(r, &body); err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "invalid JSON body", "validation")
+		writeValidation(w, "invalid JSON body", map[string]string{"body": "malformed JSON or unknown fields"})
 		return
 	}
 	ids := make([]uuid.UUID, 0, len(body.TagIDs))
 	for _, raw := range body.TagIDs {
-		id, err := uuid.Parse(raw)
+		id, err := uuid.Parse(strings.TrimSpace(raw))
 		if err != nil {
-			writeError(w, http.StatusUnprocessableEntity, "invalid tag id", "validation")
+			writeValidation(w, "validation failed", map[string]string{"tag_ids": "each tag id must be a UUID"})
 			return
 		}
 		ids = append(ids, id)
@@ -71,12 +71,12 @@ func (s *server) deleteTaskTag(w http.ResponseWriter, r *http.Request) {
 	}
 	tid, err := uuid.Parse(r.PathValue("taskId"))
 	if err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "invalid task id", "validation")
+		writeValidation(w, "invalid path", map[string]string{"taskId": "must be a UUID"})
 		return
 	}
 	tagID, err := uuid.Parse(r.PathValue("tagId"))
 	if err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "invalid tag id", "validation")
+		writeValidation(w, "invalid path", map[string]string{"tagId": "must be a UUID"})
 		return
 	}
 	if err := s.store.RemoveTaskTag(r.Context(), uid, tid, tagID); err != nil {
@@ -96,17 +96,16 @@ func (s *server) listTags(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "unauthorized")
 		return
 	}
-	limit := 50
-	if v := r.URL.Query().Get("limit"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			limit = n
-		}
+	limit, okL, limFields := parseLimit(r.URL.Query().Get("limit"), 50)
+	if !okL {
+		writeLimitError(w, limFields)
+		return
 	}
 	var cur *store.PageCursor
 	if cs := r.URL.Query().Get("cursor"); cs != "" {
 		c, err := store.DecodePageCursor(cs)
 		if err != nil {
-			writeError(w, http.StatusUnprocessableEntity, "invalid cursor", "validation")
+			writeValidation(w, "invalid cursor", map[string]string{"cursor": "invalid or expired"})
 			return
 		}
 		cur = &c
@@ -143,13 +142,22 @@ func (s *server) createTag(w http.ResponseWriter, r *http.Request) {
 	}
 	var body tagCreateBody
 	if err := readJSON(r, &body); err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "invalid JSON body", "validation")
+		writeValidation(w, "invalid JSON body", map[string]string{"body": "malformed JSON or unknown fields"})
 		return
 	}
-	t, err := s.store.CreateTag(r.Context(), uid, body.Name)
+	name := strings.TrimSpace(body.Name)
+	if name == "" {
+		writeValidation(w, "validation failed", map[string]string{"name": "required"})
+		return
+	}
+	if len(name) > 64 {
+		writeValidation(w, "validation failed", map[string]string{"name": "must be at most 64 characters"})
+		return
+	}
+	t, err := s.store.CreateTag(r.Context(), uid, name)
 	if err != nil {
 		if errors.Is(err, store.ErrInvalidInput) {
-			writeError(w, http.StatusUnprocessableEntity, "invalid tag name", "validation")
+			writeValidation(w, "invalid tag name", map[string]string{"name": "failed validation"})
 			return
 		}
 		if errors.Is(err, store.ErrDuplicate) {

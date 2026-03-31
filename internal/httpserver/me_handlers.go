@@ -8,6 +8,17 @@ import (
 	"github.com/htahta103/taskmanagerv2/internal/store"
 )
 
+func validateEmailFormat(email string) bool {
+	if len(email) < 3 || len(email) > 254 || !strings.Contains(email, "@") {
+		return false
+	}
+	at := strings.LastIndex(email, "@")
+	if at <= 0 || at == len(email)-1 {
+		return false
+	}
+	return true
+}
+
 type mePatchBody struct {
 	Name  *string `json:"name"`
 	Email *string `json:"email"`
@@ -39,7 +50,7 @@ func (s *server) patchMe(w http.ResponseWriter, r *http.Request) {
 	}
 	var body mePatchBody
 	if err := readJSON(r, &body); err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "invalid JSON body", "validation")
+		writeValidation(w, "invalid JSON body", map[string]string{"body": "malformed JSON or unknown fields"})
 		return
 	}
 	var emailPtr *string
@@ -47,7 +58,11 @@ func (s *server) patchMe(w http.ResponseWriter, r *http.Request) {
 	if body.Email != nil {
 		v := strings.TrimSpace(strings.ToLower(*body.Email))
 		if v == "" {
-			writeError(w, http.StatusUnprocessableEntity, "email cannot be empty", "validation")
+			writeValidation(w, "validation failed", map[string]string{"email": "cannot be empty"})
+			return
+		}
+		if !validateEmailFormat(v) {
+			writeValidation(w, "validation failed", map[string]string{"email": "must be a valid email address"})
 			return
 		}
 		emailPtr = &v
@@ -55,13 +70,13 @@ func (s *server) patchMe(w http.ResponseWriter, r *http.Request) {
 	if body.Name != nil {
 		v := strings.TrimSpace(*body.Name)
 		if v == "" || len(v) > 120 {
-			writeError(w, http.StatusUnprocessableEntity, "name must be 1-120 characters", "validation")
+			writeValidation(w, "validation failed", map[string]string{"name": "must be 1-120 characters"})
 			return
 		}
 		namePtr = &v
 	}
 	if emailPtr == nil && namePtr == nil {
-		writeError(w, http.StatusUnprocessableEntity, "no fields to update", "validation")
+		writeValidation(w, "no fields to update", map[string]string{"body": "at least one of name or email is required"})
 		return
 	}
 	u, err := s.store.UpdateUser(r.Context(), uid, emailPtr, namePtr)

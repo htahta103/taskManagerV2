@@ -38,3 +38,22 @@ func TestLoad_InvalidPortFallsBack(t *testing.T) {
 		t.Fatalf("expected fallback 8080 for invalid PORT, got %d", cfg.Port)
 	}
 }
+
+func TestLoad_ProductionAuthRateLimitDefault(t *testing.T) {
+	t.Setenv("APP_ENV", "production")
+	t.Setenv("PORT", "")
+	t.Setenv("AUTH_RATE_LIMIT_PER_MINUTE", "")
+	cfg := Load()
+	if cfg.AuthRateLimitPerMinute != 60 {
+		t.Fatalf("expected default auth rate limit 60 in production, got %d", cfg.AuthRateLimitPerMinute)
+	}
+}
+
+func TestLoad_AuthRateLimitExplicitZero(t *testing.T) {
+	t.Setenv("APP_ENV", "production")
+	t.Setenv("AUTH_RATE_LIMIT_PER_MINUTE", "0")
+	cfg := Load()
+	if cfg.AuthRateLimitPerMinute != 0 {
+		t.Fatalf("expected 0 when AUTH_RATE_LIMIT_PER_MINUTE=0, got %d", cfg.AuthRateLimitPerMinute)
+	}
+}

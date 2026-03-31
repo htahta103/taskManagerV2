@@ -10,6 +10,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/htahta103/taskmanagerv2/internal/config"
 	"github.com/htahta103/taskmanagerv2/internal/db"
 	"github.com/htahta103/taskmanagerv2/internal/httpserver"
@@ -41,7 +42,7 @@ func TestIntegration_APIAuthProjectsTasks(t *testing.T) {
 	srv := httptest.NewServer(httpserver.NewHandler(cfg, pool))
 	t.Cleanup(srv.Close)
 
-	email := "integration-" + t.Name() + "@example.com"
+	email := "integration-" + uuid.NewString() + "@example.com"
 	regBody := map[string]any{
 		"email":    email,
 		"password": "longpassword1",
@@ -134,5 +135,61 @@ func TestIntegration_APIAuthProjectsTasks(t *testing.T) {
 	defer rz.Body.Close()
 	if rz.StatusCode != http.StatusOK {
 		t.Fatalf("readyz status %d", rz.StatusCode)
+	}
+}
+
+func TestIntegration_APIValidation422Envelope(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL not set; start postgres (e.g. docker compose) to run integration tests")
+	}
+	if os.Getenv("JWT_SECRET") == "" {
+		t.Setenv("JWT_SECRET", "integration-test-jwt-secret-32-characters!!")
+	}
+	t.Setenv("APP_ENV", "development")
+	cfg := config.Load()
+
+	ctx := context.Background()
+	pool, err := db.NewPool(ctx, dsn)
+	if err != nil {
+		t.Fatalf("db pool: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	if err := db.Migrate(ctx, pool); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	srv := httptest.NewServer(httpserver.NewHandler(cfg, pool))
+	t.Cleanup(srv.Close)
+
+	regBody := map[string]any{
+		"email":    "badpw-" + t.Name() + "@example.com",
+		"password": "short",
+		"name":     "x",
+	}
+	rb, _ := json.Marshal(regBody)
+	resp, err := http.Post(srv.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
+	if err != nil {
+		t.Fatalf("register: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("register status %d want 422: %s", resp.StatusCode, b)
+	}
+	var env map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&env); err != nil {
+		t.Fatalf("json: %v", err)
+	}
+	if env["code"] != "validation" {
+		t.Fatalf("code = %v want validation", env["code"])
+	}
+	details, ok := env["details"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing details: %#v", env)
+	}
+	fields, ok := details["fields"].(map[string]any)
+	if !ok || fields["password"] == nil {
+		t.Fatalf("missing fields.password in %#v", details)
 	}
 }

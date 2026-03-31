@@ -8,13 +8,15 @@ import (
 
 // Config holds runtime settings loaded from the environment.
 type Config struct {
-	Port         int
-	DatabaseURL  string
-	CORSOrigin   string
-	Environment  string
-	JWTSecret    string
-	AccessTTL    time.Duration
-	RefreshTTL   time.Duration
+	Port        int
+	DatabaseURL string
+	CORSOrigin  string
+	Environment string
+	JWTSecret   string
+	AccessTTL   time.Duration
+	RefreshTTL  time.Duration
+	// AuthRateLimitPerMinute caps POST /auth/register|login|refresh per client IP per minute (0 = disabled).
+	AuthRateLimitPerMinute int
 }
 
 // Load reads configuration from environment variables with sensible defaults.
@@ -42,14 +44,23 @@ func Load() Config {
 			refreshDays = n
 		}
 	}
+	authRL := 0
+	if v := os.Getenv("AUTH_RATE_LIMIT_PER_MINUTE"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			authRL = n
+		}
+	} else if env == "production" {
+		authRL = 60
+	}
 	return Config{
-		Port:        port,
-		DatabaseURL: os.Getenv("DATABASE_URL"),
-		CORSOrigin:  os.Getenv("CORS_ORIGIN"),
-		Environment: env,
-		JWTSecret:   secret,
-		AccessTTL:   time.Duration(accessMin) * time.Minute,
-		RefreshTTL:  time.Duration(refreshDays) * 24 * time.Hour,
+		Port:                   port,
+		DatabaseURL:            os.Getenv("DATABASE_URL"),
+		CORSOrigin:             os.Getenv("CORS_ORIGIN"),
+		Environment:            env,
+		JWTSecret:              secret,
+		AccessTTL:              time.Duration(accessMin) * time.Minute,
+		RefreshTTL:             time.Duration(refreshDays) * 24 * time.Hour,
+		AuthRateLimitPerMinute: authRL,
 	}
 }
 

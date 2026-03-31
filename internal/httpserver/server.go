@@ -10,14 +10,20 @@ import (
 )
 
 type server struct {
-	cfg   config.Config
-	pool  *pgxpool.Pool
-	store *store.Store
+	cfg    config.Config
+	pool   *pgxpool.Pool
+	store  *store.Store
+	authRL *authMinuteLimiter
 }
 
 // NewHandler returns the full API HTTP handler (routes, CORS, database-backed handlers).
 func NewHandler(cfg config.Config, pool *pgxpool.Pool) http.Handler {
-	s := &server{cfg: cfg, pool: pool, store: store.New(pool)}
+	s := &server{
+		cfg:    cfg,
+		pool:   pool,
+		store:  store.New(pool),
+		authRL: newAuthMinuteLimiter(cfg.AuthRateLimitPerMinute),
+	}
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", s.getHealthz)
@@ -25,10 +31,10 @@ func NewHandler(cfg config.Config, pool *pgxpool.Pool) http.Handler {
 
 	mux.HandleFunc("GET /api/v1", s.getAPIv1Root)
 
-	mux.HandleFunc("POST /api/v1/auth/register", s.postRegister)
-	mux.HandleFunc("POST /api/v1/auth/login", s.postLogin)
+	mux.HandleFunc("POST /api/v1/auth/register", s.withAuthRateLimit(s.postRegister))
+	mux.HandleFunc("POST /api/v1/auth/login", s.withAuthRateLimit(s.postLogin))
 	mux.HandleFunc("POST /api/v1/auth/logout", s.requireAuth(s.postLogout))
-	mux.HandleFunc("POST /api/v1/auth/refresh", s.postRefresh)
+	mux.HandleFunc("POST /api/v1/auth/refresh", s.withAuthRateLimit(s.postRefresh))
 
 	mux.HandleFunc("GET /api/v1/me", s.requireAuth(s.getMe))
 	mux.HandleFunc("PATCH /api/v1/me", s.requireAuth(s.patchMe))
