@@ -84,7 +84,9 @@ GitHub Actions runs `go test`, `go vet`, API build, `web` typecheck + build, CLI
 
 ## Database migrations
 
-SQL lives in `db/migrations/` (`001_*.sql`, `002_*.sql`, …). With `DATABASE_URL` set, `go run ./cmd/api` applies these files in order on startup via `internal/db.Migrate`.
+SQL lives in `db/migrations/` (`001_*.sql`, `002_*.sql`, …), embedded at build time via `db/embed.go`. With `DATABASE_URL` set, `go run ./cmd/api` applies these files in lexicographic order on startup through `internal/db.Migrate`.
+
+PostgreSQL **14+** is required (`CREATE TRIGGER … EXECUTE FUNCTION`). Migration `001_extensions.sql` enables `pgcrypto` (UUID defaults) and `pg_trgm` (ILIKE / search indexes); ensure your managed provider allows those extensions.
 
 Manual apply (e.g. managed Postgres — set `DATABASE_URL` to your cluster):
 
@@ -95,4 +97,4 @@ for f in db/migrations/*.sql; do
 done
 ```
 
-Alternatively open `fly postgres connect -a <app>` and run the same files in order.
+Alternatively open `fly postgres connect -a <app>` and run the same files in order. Required API env: `.env.example` (`DATABASE_URL` for database-backed runs).
