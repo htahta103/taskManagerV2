@@ -84,10 +84,15 @@ GitHub Actions runs `go test`, `go vet`, API build, `web` typecheck + build, CLI
 
 ## Database migrations
 
-SQL lives in `db/migrations/`. Apply in order with `psql` (set `DATABASE_URL` to your cluster, e.g. Fly Postgres for app `nfbquxfnsprwjsehhnvq`):
+SQL lives in `db/migrations/` (`001_*.sql`, `002_*.sql`, …). With `DATABASE_URL` set, `go run ./cmd/api` applies these files in order on startup via `internal/db.Migrate`.
+
+Manual apply (e.g. managed Postgres — set `DATABASE_URL` to your cluster):
 
 ```bash
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/001_tasks_schema.sql
+set -euo pipefail
+for f in db/migrations/*.sql; do
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
+done
 ```
 
-Alternatively run `fly postgres connect -a nfbquxfnsprwjsehhnvq` and paste the migration file contents.
+Alternatively open `fly postgres connect -a <app>` and run the same files in order.
