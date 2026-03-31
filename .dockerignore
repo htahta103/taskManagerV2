@@ -1,0 +1,9 @@
+.git
+.github
+**/.env
+**/.env.*
+web/node_modules
+web/dist
+cli/node_modules
+cli/dist
+**/*.md

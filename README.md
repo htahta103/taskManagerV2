@@ -2,6 +2,7 @@
 
 - [Product requirements](./PRD-task-manager-v2.md)
 - [Architecture](./docs/ARCHITECTURE.md)
+- [Deployment (Docker, secrets, HTTPS, probes)](./docs/DEPLOYMENT.md)
 - [API spec (OpenAPI 3)](./docs/api/openapi.yaml)
 
 ## Layout
@@ -12,7 +13,8 @@
 | `internal/config` | Environment-based configuration |
 | `cli/` | Node.js CLI (`task` binary) for `/api/v1` tasks |
 | `web/` | Vite + React + TypeScript frontend |
-| `docker-compose.yml` | Local PostgreSQL 17 |
+| `docker-compose.yml` | PostgreSQL 17 + API image (smoke / prod-like local stack) |
+| `Dockerfile` | Multi-stage build for `cmd/api` |
 | `.env.example` | Copy to `.env` and adjust for local dev |
 
 ## Prerequisites
@@ -23,7 +25,19 @@
 
 ## Local development
 
-1. **Database (optional for scaffold):**
+### Option A: API + Postgres in Docker
+
+Runs migrations and the full HTTP API against the compose database (ports **8080** API, **5432** Postgres):
+
+```bash
+docker compose up --build
+```
+
+Override secrets via environment or an `env_file` — see [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md). Then run the **web** app on the host (`cd web && npm run dev`) so the default Vite proxy can reach `http://localhost:8080`.
+
+### Option B: Postgres only (API on the host)
+
+1. **Database:**
 
    ```bash
    docker compose up -d postgres
@@ -36,8 +50,9 @@
    go run ./cmd/api
    ```
 
-   - Health: `GET http://localhost:8080/healthz`
-   - API stub: `GET http://localhost:8080/api/v1`
+   - Liveness: `GET http://localhost:8080/healthz`
+   - Readiness (with `DATABASE_URL`): `GET http://localhost:8080/readyz`
+   - API root: `GET http://localhost:8080/api/v1`
 
 3. **CLI:**
 

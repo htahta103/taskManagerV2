@@ -1,5 +1,6 @@
 # Build: docker build -t taskmanagerv2-api .
-# Run:   docker run -e DATABASE_URL=... -e JWT_SECRET=... -e CORS_ORIGIN=... -p 8080:8080 taskmanagerv2-api
+# Run:    docker run -e DATABASE_URL=... -e JWT_SECRET=... -e CORS_ORIGIN=... -p 8080:8080 taskmanagerv2-api
+# Compose: docker compose up --build  (see docker-compose.yml and docs/DEPLOYMENT.md)
 FROM golang:1.25-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./

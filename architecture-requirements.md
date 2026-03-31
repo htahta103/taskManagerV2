@@ -1,5 +1,7 @@
 # Architecture Requirements: Task Manager V2
 
+> **Superseded (historical)** — This file described an early Supabase Edge–centric plan. The **current** architecture (Go API, PostgreSQL, Vite web, auth model, and deployment shape) is documented in **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** and **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)**. Keep this file for PRD-era context only.
+
 ## Core Domain Entities and Relationships
 
 - **Task**

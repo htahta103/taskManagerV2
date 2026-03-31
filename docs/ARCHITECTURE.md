@@ -1,6 +1,6 @@
 # Task Manager V2 — Architecture
 
-This document describes the target system architecture for the MVP defined in [PRD-task-manager-v2.md](../PRD-task-manager-v2.md). It is meant to guide backend and frontend milestone work (beads **M2** / **M3** under epic `tm-bbw`).
+This document describes the target system architecture for the MVP defined in [PRD-task-manager-v2.md](../PRD-task-manager-v2.md). It is meant to guide backend and frontend milestone work (beads **M2** / **M3** under epic `tm-bbw`). For containers, secrets, and `/healthz` / `/readyz` in production, see [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ## 1. Goals and constraints
 

@@ -1,3 +1,11 @@
+# Local / prod-like smoke: API (Go) + PostgreSQL 17.
+#
+# Ports (host):
+#   - 5432 — Postgres (optional localhost access for psql/migrations)
+#   - 8080 — HTTP API (`/healthz`, `/readyz`, `/api/v1/...`)
+#
+# Run: docker compose up --build
+# Env vars for the `api` service mirror production (see docs/DEPLOYMENT.md).
 services:
   postgres:
     image: postgres:17-alpine
@@ -14,6 +22,23 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: "8080"
+      APP_ENV: development
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/taskmanagerv2?sslmode=disable
+      # Dev-only default for compose; use a strong random secret in real deployments.
+      JWT_SECRET: docker-compose-dev-jwt-secret-32chars
+      CORS_ORIGIN: http://localhost:5173
+    ports:
+      - "8080:8080"
 
 volumes:
   taskmanagerv2_pgdata:
