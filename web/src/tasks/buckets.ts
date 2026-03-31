@@ -27,6 +27,11 @@ export function focusBucketForTask(task: Task, now: Date = new Date()): FocusBuc
 
   if (task.pinnedToday) return "today";
 
+  const fromApi = task.focusBucket;
+  if (fromApi && fromApi !== "none") {
+    return fromApi;
+  }
+
   if (task.dueDate) {
     const diff = calendarDaysFromToday(task.dueDate, now);
     if (!Number.isFinite(diff)) {

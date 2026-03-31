@@ -2,7 +2,7 @@ import { TaskList } from "../components/TaskList";
 import { useTasks } from "../tasks/TaskContext";
 
 export function InboxPage() {
-  const { tasks, loading, openEditor } = useTasks();
+  const { tasks, loading, openTaskEditor } = useTasks();
   const open = tasks.filter((t) => t.status !== "done").sort(byUpdatedDesc);
 
   return (
@@ -17,7 +17,7 @@ export function InboxPage() {
         <TaskList
           tasks={open}
           empty="No open tasks — add one above."
-          onOpen={openEditor}
+          onOpen={openTaskEditor}
           showBucketHint
         />
       )}

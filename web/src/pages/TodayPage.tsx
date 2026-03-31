@@ -3,7 +3,7 @@ import { tasksForBucket } from "../tasks/buckets";
 import { useTasks } from "../tasks/TaskContext";
 
 export function TodayPage() {
-  const { tasks, loading, openEditor } = useTasks();
+  const { tasks, loading, openTaskEditor } = useTasks();
   const now = new Date();
   const today = tasksForBucket(tasks, "today", now);
   const next = tasksForBucket(tasks, "next", now);
@@ -30,7 +30,7 @@ export function TodayPage() {
             <TaskList
               tasks={today}
               empty="Nothing scheduled for today."
-              onOpen={openEditor}
+              onOpen={openTaskEditor}
             />
           </section>
           <section className="plan__col" aria-labelledby="plan-next">
@@ -41,7 +41,7 @@ export function TodayPage() {
             <TaskList
               tasks={next}
               empty="No upcoming items in this window."
-              onOpen={openEditor}
+              onOpen={openTaskEditor}
             />
           </section>
           <section className="plan__col" aria-labelledby="plan-later">
@@ -52,7 +52,7 @@ export function TodayPage() {
             <TaskList
               tasks={later}
               empty="Your backlog is clear."
-              onOpen={openEditor}
+              onOpen={openTaskEditor}
             />
           </section>
         </div>

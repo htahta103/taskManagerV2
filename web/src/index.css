@@ -225,6 +225,12 @@ code {
   color: var(--muted);
 }
 
+.field__error {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--danger, #b91c1c);
+}
+
 .input {
   width: 100%;
   padding: 0.55rem 0.65rem;

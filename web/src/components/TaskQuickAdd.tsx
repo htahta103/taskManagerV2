@@ -1,30 +1,13 @@
-import { useState, type FormEvent } from "react";
 import { useTasks } from "../tasks/TaskContext";
 
 export function TaskQuickAdd() {
-  const { addTask } = useTasks();
-  const [value, setValue] = useState("");
-
-  function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    const created = addTask(value);
-    if (created) setValue("");
-  }
+  const { openCreateModal } = useTasks();
 
   return (
-    <form className="quickadd" onSubmit={onSubmit} aria-label="Quick add task">
-      <input
-        className="input quickadd__input"
-        name="title"
-        placeholder="Add a task…"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        maxLength={200}
-        autoComplete="off"
-      />
-      <button type="submit" className="btn btn--primary" disabled={!value.trim()}>
-        Add
+    <div className="quickadd">
+      <button type="button" className="btn btn--primary quickadd__cta" onClick={openCreateModal}>
+        Add task
       </button>
-    </form>
+    </div>
   );
 }

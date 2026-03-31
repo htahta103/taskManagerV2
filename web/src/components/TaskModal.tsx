@@ -1,20 +1,43 @@
-import { useEffect, useRef, useState } from "react";
-import { draftToPatch, taskToDraft, type TaskDraft, useTasks } from "../tasks/TaskContext";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  taskToDraft,
+  type TaskDraft,
+  type TaskModalState,
+  useTasks,
+} from "../tasks/TaskContext";
 import type { Task } from "../tasks/types";
 
+const emptyDraft: TaskDraft = {
+  title: "",
+  description: "",
+  status: "todo",
+  priority: "",
+  dueDate: "",
+  pinnedToday: false,
+};
+
 type Props = {
-  task: Task;
+  state: Exclude<TaskModalState, null>;
   onClose: () => void;
 };
 
-export function TaskEditDialog({ task, onClose }: Props) {
-  const { updateTask, removeTask } = useTasks();
+export function TaskModal({ state, onClose }: Props) {
+  const { submitNewTask, submitTaskEdit, removeTask } = useTasks();
   const ref = useRef<HTMLDialogElement>(null);
-  const [draft, setDraft] = useState<TaskDraft>(() => taskToDraft(task));
+  const isCreate = state.mode === "create";
+  const task: Task | undefined = state.mode === "edit" ? state.task : undefined;
+
+  const initialDraft = useMemo(() => (isCreate ? emptyDraft : taskToDraft(task!)), [isCreate, task]);
+
+  const [draft, setDraft] = useState<TaskDraft>(initialDraft);
+  const [saveAttempted, setSaveAttempted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
-    setDraft(taskToDraft(task));
-  }, [task]);
+    setDraft(initialDraft);
+    setSaveAttempted(false);
+    setSubmitError(null);
+  }, [initialDraft, state.mode, task?.id]);
 
   useEffect(() => {
     const el = ref.current;
@@ -26,16 +49,27 @@ export function TaskEditDialog({ task, onClose }: Props) {
       el.removeEventListener("cancel", onCancel);
       el.close();
     };
-  }, [task.id, onClose]);
+  }, [state.mode, task?.id, onClose]);
 
-  function save() {
-    const t = draft.title.trim();
-    if (!t) return;
-    updateTask(task.id, draftToPatch({ ...draft, title: t }));
-    onClose();
+  const titleError = saveAttempted && !draft.title.trim();
+
+  async function save() {
+    setSaveAttempted(true);
+    setSubmitError(null);
+    if (!draft.title.trim()) return;
+    try {
+      if (isCreate) {
+        await submitNewTask(draft);
+      } else {
+        await submitTaskEdit(task!, draft);
+      }
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : "Something went wrong");
+    }
   }
 
   function del() {
+    if (!task || isCreate) return;
     if (window.confirm("Delete this task?")) {
       removeTask(task.id);
       onClose();
@@ -46,7 +80,7 @@ export function TaskEditDialog({ task, onClose }: Props) {
     <dialog ref={ref} className="dialog" onClose={onClose}>
       <div className="dialog__panel">
         <header className="dialog__header">
-          <h2 className="dialog__title">Edit task</h2>
+          <h2 className="dialog__title">{isCreate ? "Add task" : "Edit task"}</h2>
           <button type="button" className="btn btn--ghost dialog__close" onClick={onClose} aria-label="Close">
             ×
           </button>
@@ -59,7 +93,14 @@ export function TaskEditDialog({ task, onClose }: Props) {
               value={draft.title}
               maxLength={200}
               onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
+              aria-invalid={titleError ? true : undefined}
+              aria-describedby={titleError ? "task-modal-title-error" : undefined}
             />
+            {titleError ? (
+              <span id="task-modal-title-error" className="field__error" role="alert">
+                Title is required
+              </span>
+            ) : null}
           </label>
           <label className="field">
             <span className="field__label">Description</span>
@@ -125,17 +166,26 @@ export function TaskEditDialog({ task, onClose }: Props) {
             />
             <span className="field__label">Pin to Today</span>
           </label>
+          {submitError ? (
+            <p className="field__error" role="alert">
+              {submitError}
+            </p>
+          ) : null}
         </div>
         <footer className="dialog__footer">
-          <button type="button" className="btn btn--ghost" onClick={del}>
-            Delete
-          </button>
+          {isCreate ? (
+            <span />
+          ) : (
+            <button type="button" className="btn btn--ghost" onClick={del}>
+              Delete
+            </button>
+          )}
           <div className="dialog__footer-right">
             <button type="button" className="btn btn--ghost" onClick={onClose}>
               Cancel
             </button>
-            <button type="button" className="btn btn--primary" onClick={save} disabled={!draft.title.trim()}>
-              Save
+            <button type="button" className="btn btn--primary" onClick={save}>
+              {isCreate ? "Create" : "Save"}
             </button>
           </div>
         </footer>
